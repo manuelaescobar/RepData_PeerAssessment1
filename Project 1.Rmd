@@ -1,0 +1,86 @@
+---
+title: "Markdown-Project1"
+author: "Manuela Escobar"
+date: "04-October-2020"
+output: html_document
+---
+## Project instructions
+1. Code for reading in the dataset and/or processing the data
+2. Histogram of the total number of steps taken each day
+3. Mean and median number of steps taken each day
+4. Time series plot of the average number of steps taken
+5. The 5-minute interval that, on average, contains the maximum number of steps
+6. Code to describe and show a strategy for imputing missing data
+7. Histogram of the total number of steps taken each day after missing values are imputed
+8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+9. All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
+
+Development
+
+##### 1. Code for reading in the dataset and/or processing the data
+```{r}
+library(ggplot2)
+activity <- read.csv("activity.csv")
+# Understanding data
+dim(activity)
+names(activity)
+head(activity)
+str(activity)
+# Missing data an date format
+sum(is.na(activity$steps))
+summary(activity)
+```
+
+##### 2. Histogram of the total number of steps taken each day
+```{r, echo = TRUE}
+#ActStepDay
+ActStepDay <- tapply(activity$steps, activity$date, sum, na.rm=TRUE)
+#Plotting
+qplot(ActStepDay, xlab = "Number of steps taken each day", main = "Total number of steps taken each day", binwidth=500)
+```
+
+##### 3. Mean and median number of steps taken each day
+```{r}
+    #Mean
+    ActStepDayMean <- mean(ActStepDay)
+    ActStepDayMean
+    #Median
+    ActStepDayMedian <- median(ActStepDay)
+    ActStepDayMedian
+```
+
+##### 4. Time series plot of the average number of steps taken
+```{r, echo = TRUE}
+MeanStep5min <- aggregate(x=list(meanSteps=activity$steps), by=list(interval=activity$interval), FUN=mean, na.rm=TRUE)
+ggplot(data = MeanStep5min, aes(x=interval, y=meanSteps)) + geom_line() + xlab("Intervals of 5 min") + ylab("Mean steps") 
+```
+
+##### 5. The 5-minute interval that, on average, contains the maximum number of steps
+```{r}
+AveStep5min <- aggregate(data=activity,steps~date+interval,FUN="mean")
+MaxAveStep5min <- aggregate(data=AveStep5min,steps~interval,FUN="max")
+max(MaxAveStep5min$steps)
+b <- as.data.frame(MaxAveStep5min)
+b[b[2] == max(b$steps)]
+```
+
+##### 6. Code to describe and show a strategy for imputing missing data
+```{r}
+library(imputeMissings)
+AmountMissingValues <- length(which(is.na(activity$steps)))
+NoMissingValues <- impute(data = activity, object = NULL, method = "median/mode")
+sum(is.na(NoMissingValues$steps))
+```
+
+##### 7. Histogram of the total number of steps taken each day after missing values are imputed
+```{r, echo = TRUE}
+ImputedStepsDay <- tapply(NoMissingValues$steps, NoMissingValues$date, sum)
+qplot(ImputedStepsDay, xlab='Imputed total steps per day', main = "Total number of imputrd steps taken each day", binwidth=500)
+```
+
+##### 8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r, echo = TRUE}
+NoMissingValues$dateType <-  ifelse(as.POSIXlt(NoMissingValues$date)$wday %in% c(0,6), 'weekend', 'weekday')
+Number <- aggregate(steps ~ interval + dateType, data=NoMissingValues, mean)
+ggplot(Number, aes(interval, steps)) +geom_line() + facet_grid(dateType ~ .) + xlab("5-minute interval") + ylab("avarage number of steps")
+```
